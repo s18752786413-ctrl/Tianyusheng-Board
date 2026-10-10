@@ -3,6 +3,8 @@
 begin;
 create table if not exists public.tys_admins(email text primary key check(email=lower(email)));
 create table if not exists public.tys_state(id boolean primary key default true check(id),payload jsonb not null,revision bigint not null default 0,updated_at timestamptz not null default now());
+-- 用户已指定的管理员账号对应邮箱；密码由Supabase Auth管理。
+insert into public.tys_admins(email) values ('15356974248@163.com') on conflict do nothing;
 alter table public.tys_admins enable row level security;
 alter table public.tys_state enable row level security;
 revoke all on public.tys_admins,public.tys_state from anon,authenticated;
@@ -133,3 +135,6 @@ create policy tys_image_delete on storage.objects for delete to authenticated us
 commit;
 -- 初始化后，将QA及会长的实际邮箱加入下面的名单（替换占位符再单独执行）。
 -- insert into public.tys_admins(email) values (lower('QA实际邮箱')), (lower('会长实际邮箱')) on conflict do nothing;
+
+-- 通知接口服务重新加载新增函数。
+notify pgrst, 'reload schema';
