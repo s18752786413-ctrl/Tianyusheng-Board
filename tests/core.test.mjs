@@ -12,7 +12,7 @@ test('非本公会不建档；后续导入保留人工身份及入会日期',()=
 });
 test('重复导入不盲加；可分别覆盖流水或时长；同批次重复拒绝',()=>{
  const s=emptyState();s.profiles=[profile('甲')];s.records=[record('甲','2026-10-09',100,3600)];const a=importRows([{name:'甲',date:'2026-10-09',wave:500,seconds:7200,joinDate:'2026-10-01'}],s.profiles);
- assert.equal(applyImport(s,a).state.records[0].wave,100);assert.equal(applyImport(s,a,'overwrite','time').state.records[0].wave,100);assert.equal(applyImport(s,a,'overwrite','time').state.records[0].seconds,7200);assert.equal(applyImport(s,a,'overwrite','wave').state.records[0].seconds,3600);
+ assert.equal(applyImport(s,a,'skip').state.records[0].wave,100);assert.equal(applyImport(s,a,'overwrite','time').state.records[0].wave,100);assert.equal(applyImport(s,a,'overwrite','time').state.records[0].seconds,7200);assert.equal(applyImport(s,a,'overwrite','wave').state.records[0].seconds,3600);
  assert.throws(()=>applyImport(s,{...a,valid:[...a.valid,...a.valid]},'overwrite'),/多条记录/);
 });
 test('截至昨日、月累计段位、冠军并列用月流水、隐藏与月零排除',()=>{
@@ -34,3 +34,5 @@ test('前30天目标6万；满30天后下个完整自然周启用普通最高阶
  s.profiles[0].left=true;assert.equal(snapshot(s,'2026-10-13').rewards.length,0);
 });
 test('重复日和非法日期阻止保存',()=>{const s=emptyState();s.profiles=[profile('甲')];s.records=[record('甲','2026-02-30',1)];assert.throws(()=>validateState(s));s.records=[record('甲','2026-10-01',1),record('甲','2026-10-01',2)];assert.throws(()=>validateState(s),/重复/);});
+
+test('新表默认整批替换，旧日期和旧主播记录全部移除，资料保留',()=>{const s=emptyState();s.profiles=[profile('甲',{name:'퓣.小雅',offline:true,left:true,show:false,avatar:'已上传头像'}),profile('旧主播')];s.records=[record('甲','2026-09-01',999),record('旧主播','2026-10-09',300)];const a=importRows([{name:'小雅',date:'2026-10-10',wave:200,seconds:60,joinDate:'2026-10-01'}],s.profiles);const next=applyImport(s,a).state;assert.equal(next.records.length,1);assert.equal(next.records[0].profileId,'甲');assert.equal(next.records[0].wave,200);assert.equal(next.profiles[0].avatar,'已上传头像');assert.equal(next.profiles[0].left,true);assert.equal(next.profiles[0].show,false);assert.equal(next.profiles.length,2);assert.throws(()=>applyImport(s,{valid:[],errors:[],matches:{}}),/旧数据未清除/);});

@@ -35,18 +35,18 @@ export function validateState(s){
  const tasks=new Set();for(const t of s.tasks){const k=t.profileId+t.week;if(tasks.has(k))throw Error('同一主播同一周只可设置一项周任务');tasks.add(k);if(!ids.has(t.profileId)||!validDate(t.week)||monday(t.week)!==t.week||!Number.isFinite(t.target)||t.target<=0)throw Error('周任务需要正确的主播、周一日期和正数目标');}
  return s;
 }
-export const normalizeName=n=>String(n).normalize('NFKC').toLowerCase().replace(/^[tＴ]\s*[.．·]/i,'').replace(/[\s\p{P}\p{S}]/gu,'');
+export const normalizeName=n=>String(n).normalize('NFKC').toLowerCase().replace(/^(?:[퓣퓐]\s*[.．·]?\s*|[tＴ]\s*[.．·]\s*)/i,'').replace(/[\s\p{P}\p{S}]/gu,'');
 export function similarity(a,b){a=normalizeName(a);b=normalizeName(b);if(!a||!b)return 0;if(a===b)return 1;if(a.includes(b)||b.includes(a))return .85;let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const row=[i];for(let j=1;j<=b.length;j++)row[j]=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=row;}return 1-prev[b.length]/Math.max(a.length,b.length);}
 export function importRows(rows,profiles){
  const valid=[],excluded=[],errors=[],matches={};
  rows.forEach((r,i)=>{const name=String(r.name||'').trim();if(String(r.joinDate||'').trim()==='非本公会'){excluded.push({row:i+2,name});return;}
  if(!name||!validDate(r.date)||!validDate(r.joinDate)||!Number.isFinite(r.wave)||r.wave<0||!Number.isInteger(r.wave)||!Number.isFinite(r.seconds)||r.seconds<0){errors.push({row:i+2,name,message:'请检查拍档名、日期、音浪、时长和入会日期'});return;}
- const exact=profiles.find(p=>p.name===name||(p.aliases||[]).includes(name));if(!(name in matches))matches[name]={target:exact?.id||'',suggestions:exact?[]:profiles.map(p=>({id:p.id,name:p.name,score:similarity(name,p.name)})).filter(x=>x.score>=.55).sort((a,b)=>b.score-a.score).slice(0,4)};
+ const exact=profiles.find(p=>p.name===name||(p.aliases||[]).includes(name))||profiles.find(p=>normalizeName(p.name)===normalizeName(name));if(!(name in matches))matches[name]={target:exact?.id||'',suggestions:exact?[]:profiles.map(p=>({id:p.id,name:p.name,score:similarity(name,p.name)})).filter(x=>x.score>=.55).sort((a,b)=>b.score-a.score).slice(0,4)};
  valid.push({...r,name});});return {valid,excluded,errors,matches};
 }
-export function applyImport(state,analysis,mode='skip',part='all'){
- const s=structuredClone(state),lookup=new Map(),conflicts=[],batchKeys=new Set();for(const r of analysis.valid){let p=s.profiles.find(p=>p.id===analysis.matches[r.name]?.target)||s.profiles.find(p=>p.name===r.name||(p.aliases||[]).includes(r.name));
+export function applyImport(state,analysis,mode='replace',part='all'){
+ const s=structuredClone(state),lookup=new Map(),conflicts=[],batchKeys=new Set(),nameKeys=new Set();if(mode==='replace'){if(!analysis.valid.length||analysis.errors.length)throw Error('新表没有有效数据或存在异常，旧数据未清除');s.records=[];}for(const r of analysis.valid){let p=s.profiles.find(p=>p.id===analysis.matches[r.name]?.target)||s.profiles.find(p=>p.name===r.name||(p.aliases||[]).includes(r.name))||s.profiles.find(p=>normalizeName(p.name)===normalizeName(r.name));
  if(!p){p={id:crypto.randomUUID(),name:r.name,joinDate:r.joinDate,show:true,offline:false,left:false,aliases:[]};s.profiles.push(p);}else{if(!p.joinDate)p.joinDate=r.joinDate;else if(p.joinDate!==r.joinDate)conflicts.push(`${r.name}：保留已存入会日期${p.joinDate}`);if(p.name!==r.name&&!p.aliases?.includes(r.name))p.aliases=[...(p.aliases||[]),r.name];}lookup.set(r.name,p.id);}
- for(const r of analysis.valid){const id=lookup.get(r.name),batchKey=id+'/'+r.date;if(batchKeys.has(batchKey))throw Error('本批次存在同一主播同一天的多条记录，请核对姓名匹配并移除重复行');batchKeys.add(batchKey);const old=s.records.find(x=>x.profileId===id&&x.date===r.date);if(old&&mode==='skip')continue;if(old){if(part!=='time')old.wave=r.wave;if(part!=='wave')old.seconds=r.seconds;}else s.records.push({profileId:id,date:r.date,wave:part==='time'?0:r.wave,seconds:part==='wave'?0:r.seconds});}
+ for(const r of analysis.valid){const id=lookup.get(r.name),batchKey=id+'/'+r.date;const nameKey=normalizeName(r.name)+'/'+r.date;if(batchKeys.has(batchKey)||nameKeys.has(nameKey))throw Error('本批次存在同一主播同一天的多条记录，请核对姓名匹配并移除重复行');batchKeys.add(batchKey);nameKeys.add(nameKey);const old=s.records.find(x=>x.profileId===id&&x.date===r.date);if(old&&mode==='skip')continue;if(old){if(part!=='time')old.wave=r.wave;if(part!=='wave')old.seconds=r.seconds;}else s.records.push({profileId:id,date:r.date,wave:part==='time'?0:r.wave,seconds:part==='wave'?0:r.seconds});}
  return {state:validateState(s),conflicts};
 }
