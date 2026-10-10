@@ -7,7 +7,7 @@ import {snapshot} from './core.js';
 import './style.css';
 
 function App(){
- const [admin,setAdmin]=useState(location.hash.startsWith('#admin')),[data,setData]=useState(null),[status,setStatus]=useState('正在连接看板…'),[sample,setSample]=useState(false),[localPreview,setLocalPreview]=useState(null);
+ const [admin,setAdmin]=useState((location.hash.startsWith('#admin')||new URLSearchParams(location.search).get('reset')==='1')),[data,setData]=useState(null),[status,setStatus]=useState('正在连接看板…'),[sample,setSample]=useState(false),[localPreview,setLocalPreview]=useState(null);
  const hasCloud=useRef(false);
  const refresh=useCallback(async()=>{try{const d=await publicBoard();hasCloud.current=true;setData(d);setSample(false);setStatus('云端已同步');}catch(e){if(hasCloud.current){setStatus('同步暂不可用 · 保留上次云端数据');return;}setStatus('云端尚未初始化 · 当前为样本预览');setSample(true);setData(d=>d);const r=await fetch('./sample-preview.json');if(r.ok)setData(await r.json());}},[]);
  useEffect(()=>{refresh();const t=setInterval(refresh,5000);const nav=()=>setAdmin(location.hash.startsWith('#admin'));window.addEventListener('hashchange',nav);return()=>{clearInterval(t);window.removeEventListener('hashchange',nav);};},[refresh]);
