@@ -1,10 +1,11 @@
 import {optimizeImage} from './cache.js';
-import {createClient} from '@supabase/supabase-js';
-export const SUPABASE_URL='https://ziwxqeqefyisxwvgrhdw.supabase.co';
-export const supabase=createClient(SUPABASE_URL,'sb_publishable_uJQTEEMJIF4h8Vj_9vS0wg_cMmbRTA5',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-async function readPublicRpc(name){const controller=new AbortController();let timer;try{const result=await Promise.race([supabase.rpc(name).abortSignal(controller.signal),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('云端连接超时，继续使用本机缓存'));},12000);})]);if(result.error)throw result.error;return result.data;}finally{clearTimeout(timer);}}
-export const boardVersion=()=>readPublicRpc('tys_board_version');
-export const publicBoard=()=>readPublicRpc('tys_public_board');
-export async function loadPrivate(){const controller=new AbortController();let timer;try{const result=await Promise.race([supabase.rpc('tys_load').abortSignal(controller.signal),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('读取后台数据超时，请检查网络后重试'));},15000);})]);if(result.error)throw result.error;return result.data;}finally{clearTimeout(timer);}}
-export async function savePrivate(state,revision){const controller=new AbortController();let timer;try{const result=await Promise.race([supabase.rpc('tys_save',{payload:state,expected_revision:revision}).abortSignal(controller.signal),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('云端保存超过20秒，结果尚未确认。请关闭弹窗后重新读取后台，核对是否已保存，再重新上传；本次上传内容仍保留。'));},20000);})]);if(result.error)throw result.error;return result.data;}finally{clearTimeout(timer);}}
-export async function uploadImage(file,field){file=await optimizeImage(file,field);const key=crypto.randomUUID()+'.'+(file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg');const {error}=await supabase.storage.from('tys-display').upload(key,file,{contentType:file.type,cacheControl:'31536000',upsert:false});if(error)throw error;return supabase.storage.from('tys-display').getPublicUrl(key).data.publicUrl;}
+const listeners=new Set();
+async function request(path,options={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);try{const r=await fetch('/api/'+path,{credentials:'same-origin',...options,signal:controller.signal});const data=await r.json();if(!r.ok){const e=new Error(data.error||'服务器请求失败');e.code=data.code;throw e;}return data;}catch(e){if(e.name==='AbortError')throw Error('服务器请求超时，请重新读取后台确认保存结果');throw e;}finally{clearTimeout(timer);}}
+const notify=s=>listeners.forEach(fn=>fn(s?'SIGNED_IN':'SIGNED_OUT',s));
+export const supabase={auth:{getSession:async()=>{try{return {data:{session:(await request('session')).session}};}catch{return {data:{session:null}};}},onAuthStateChange:fn=>{listeners.add(fn);return {data:{subscription:{unsubscribe:()=>listeners.delete(fn)}}};},signInWithPassword:async({email,password})=>{try{const data=await request('login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:email,password})});notify(data.session);return {data,error:null};}catch(error){return {data:{session:null},error};}},signOut:async()=>{await request('logout',{method:'POST'});notify(null);}}};
+export const boardVersion=()=>request('version');
+export const publicBoard=()=>request('board');
+export const loadPrivate=()=>request('state');
+export const savePrivate=(state,revision)=>request('state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state,revision})});
+export const migrateImages=()=>request('migrate-images',{method:'POST'});
+export async function uploadImage(file,field){file=await optimizeImage(file,field);const data=await request('images',{method:'POST',headers:{'Content-Type':file.type},body:file});return data.url;}

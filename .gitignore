@@ -6,3 +6,6 @@ test-results/
 
 *.private.json
 *.xlsx
+
+*.private.tar.gz
+data/
