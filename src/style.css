@@ -25,3 +25,6 @@
 .daily-task-table thead tr:nth-child(2) th:first-child{width:auto}.daily-task-table tbody th{text-overflow:ellipsis;overflow:hidden}
 
 .daily-ticker-track .ticker-copy{white-space:nowrap;padding-right:160px}.daily-ticker-track .ticker-copy span{display:inline;padding:0;white-space:inherit}.ticker-done{color:#7cf6a1}.ticker-failed{color:#ff8585}.ticker-exempt{color:#c9ced8}
+
+/* 日任务表按实际人数均分剩余高度，固定保留两行表头。 */
+.daily-task-scroll{min-height:0}.daily-task-table{height:100%}.daily-task-table thead{height:64px}.daily-task-table thead tr{height:32px}.daily-task-table tbody{height:calc(100% - 64px)}.daily-task-table tbody tr{height:auto}.daily-task-table tbody td,.daily-task-table tbody th,.tv-fit .daily-task-table tbody td,.tv-fit .daily-task-table tbody th{height:auto;vertical-align:middle}.daily-task-table thead th,.tv-fit .daily-task-table thead th{height:32px}
