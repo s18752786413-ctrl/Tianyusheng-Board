@@ -16,6 +16,7 @@ function App(){
  const d=await publicBoard();cache.current={data:d,savedAt:Date.now()};lastFull.current=Date.now();writeBoardCache(d);setData(d);setSample(false);setStatus('更新已缓存 · 轮播不重复下载图片');retryAfter.current=0;
  }catch(e){retryAfter.current=Date.now()+FALLBACK_MS;if(cache.current?.data){setStatus('云端暂不可用 · 使用上次本机缓存（截至'+cache.current.data.asOf+'）');setSample(false);}else{setStatus('云端暂不可用 · 尚无本机缓存，当前为样本');setSample(true);try{const r=await fetch('./sample-preview.json');if(r.ok)setData(await r.json());}catch{}}}finally{inFlight.current=false;}},[]);
  useEffect(()=>{if(!admin)refresh();const t=setInterval(()=>{if(!admin&&document.visibilityState!=='hidden')refresh();},CHECK_MS);const nav=()=>setAdmin(location.hash.startsWith('#admin'));window.addEventListener('hashchange',nav);return()=>{clearInterval(t);window.removeEventListener('hashchange',nav);};},[refresh,admin]);
+ useEffect(()=>{const until=data?.dailyTask?.demoUntil;if(!until)return;const timer=setTimeout(()=>refresh(true),Math.max(0,until-Date.now())+300);return()=>clearTimeout(timer);},[data?.dailyTask?.demoUntil,refresh]);
  const nav=v=>{location.hash=v?'admin':'';setAdmin(v);};
  return admin?<Suspense fallback={<div className="empty-display">正在打开管理台…</div>}><Admin onBack={()=>{nav(false);if(!localPreview)refresh();}} onSaved={d=>{if(d?.preview)setLocalPreview(snapshot(d.preview));else{setLocalPreview(null);refresh(true);}}}/></Suspense>:<Board data={localPreview||data} status={localPreview?'本机编辑预览 · 未写入云端':status} sample={!!localPreview||sample} onAdmin={()=>nav(true)}/>;
 }
