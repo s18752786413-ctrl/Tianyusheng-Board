@@ -1,6 +1,6 @@
 export const localImageURL=url=>url?.startsWith('https://ziwxqeqefyisxwvgrhdw.supabase.co/storage/v1/object/public/tys-display/')?'/legacy-images/'+url.split('/').pop():url;
 // 只持久化公开展示数据和图片，不保存后台档案或登录凭据。
-export const BOARD_CACHE_KEY='tys-server-public-cache-v1';
+export const BOARD_CACHE_KEY='tys-server-public-cache-v2';
 export const CHECK_MS=10*60*1000, FALLBACK_MS=30*60*1000;
 export function readBoardCache(){try{return JSON.parse(localStorage.getItem(BOARD_CACHE_KEY))||null;}catch{return null;}}
 export function writeBoardCache(data){try{localStorage.setItem(BOARD_CACHE_KEY,JSON.stringify({data,savedAt:Date.now()}));}catch{}}
