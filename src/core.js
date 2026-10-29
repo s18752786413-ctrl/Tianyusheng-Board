@@ -10,7 +10,7 @@ export function dailyTaskSnapshot(state,today=todayShanghai(),previewStart=null)
  const config=state.dailyTask||{},start=previewStart||'2026-10-30',asOf=addDays(today,-1),target=config.target??1000,scope='offline',dates=[];
  for(let d=asOf<start?start:(addDays(asOf,-30)>start?addDays(asOf,-30):start);d<=asOf;d=addDays(d,1))dates.push(d);
  const dailyRecords=[...(state.dailyTaskHistory||[]),...state.records],dailyMap=new Map(dailyRecords.map(r=>[r.profileId+'/'+r.date,r]));
- const people=state.profiles.filter(p=>p.show!==false&&!p.left&&(scope==='all'||p.offline)).map(p=>{const days=dates.map(date=>{const record=dailyMap.get(p.id+'/'+date);const before=validDate(p.joinDate)&&date<p.joinDate,newcomer=p.dailyExempt===true&&!before;const status=before?'before':newcomer?'newcomer':!target?'unconfigured':!record?'missing':record.wave>=target?'done':'failed';return {date,wave:record?.wave??null,status};});return {id:p.id,name:p.name,days};}).sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));
+ const people=state.profiles.filter(p=>p.show!==false&&!p.left&&(scope==='all'||p.offline)).map(p=>{const days=dates.map(date=>{const record=dailyMap.get(p.id+'/'+date);const before=validDate(p.joinDate)&&date<p.joinDate,newcomer=p.dailyExempt===true&&!before;const status=before?'before':newcomer?'newcomer':!target?'unconfigured':(record?.wave??0)>=target?'done':'failed';return {date,wave:record?.wave??0,status};});return {id:p.id,name:p.name,days};}).sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));
  const groups={done:[],failed:[],newcomer:[],missing:[],unknown:[]};if(asOf>=start&&target)for(const p of people){const last=p.days.at(-1);if(groups[last?.status])groups[last.status].push(p.name);}
  return {start,asOf,target,scope,dates,people,groups};
 }
